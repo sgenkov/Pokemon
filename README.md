@@ -1,6 +1,11 @@
 How to start:
 1 npm install
-2 use live-server or something
+
+2 npm run build
+
+3 use live-server or something
+
+The 'bundle' file is attacher for just in case
 
 # Boost Interview Task :rocket: 
 
