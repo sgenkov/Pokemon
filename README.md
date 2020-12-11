@@ -1,3 +1,7 @@
+How to start:
+1 npm install
+2 use live-server or something
+
 # Boost Interview Task :rocket: 
 
 ## Instructions
