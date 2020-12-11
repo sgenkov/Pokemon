@@ -6,7 +6,7 @@ How to start:
 
 3 use live-server or something
 
-The 'bundle' file is attacher for just in case
+The 'bundle' file is attached for just in case
 
 # Boost Interview Task :rocket: 
 
