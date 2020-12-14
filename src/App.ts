@@ -5,8 +5,11 @@ import { Button } from './Utils/Button';
 import gsap from 'gsap';
 import { AssetsHandler } from './Utils/AssetsHandler';
 import { AnimationsProvider } from './Utils/AnimationsProvider';
+import { Howl } from 'howler';
 export class App {
 
+    public static battleSound: any;
+    public static hitSound: any;
     private static _battleMode: boolean = false;
     public static timeline: any;
     private static playerHero: Hero;
@@ -27,6 +30,17 @@ export class App {
         App.text.position.x = app.view.width / 2;
         App.text.position.y = app.view.height / 3;
         App.text.anchor.set(0.5);
+
+        App.battleSound = new Howl({
+            src: ['../assets/battle.mp3'],
+            volume: 0.5,
+          });
+
+          App.hitSound = new Howl({
+            src: ['../assets/hit.wav'],
+            volume: 1,
+          });
+          
         this.init();
     };
 
@@ -46,6 +60,7 @@ export class App {
     };
     public static readyForBattle(hero: Hero): void {
         App.toggleBattleMode(true);
+        App.battleSound.play();
 
         AnimationsProvider.hideHeroes();
         setTimeout(async () => {

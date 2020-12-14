@@ -1,13 +1,3 @@
-How to start:
-
-1 npm install
-
-2 npm run build
-
-3 use live-server or something
-
-The 'bundle' file is attached for just in case
-
 # Boost Interview Task :rocket: 
 
 ## Instructions

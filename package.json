@@ -17,8 +17,10 @@
   },
   "homepage": "https://github.com/boost-by-dopamine/interview-task-sgenkov#readme",
   "dependencies": {
+    "@types/howler": "^2.2.1",
     "@types/pixi.js": "^4.5.3",
     "gsap": "^3.5.1",
+    "howler": "^2.2.1",
     "pixi.js": "^5.3.3",
     "tsify": "^5.0.2"
   },

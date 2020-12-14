@@ -62,6 +62,7 @@ export class Hero {
         
         (damage > 0) && (victim.currentHitPoints -= damage);
         victim.healthBar.updateHitpoints(victim.currentHitPoints);
+        App.hitSound.play();
         return damage;
     };
 
