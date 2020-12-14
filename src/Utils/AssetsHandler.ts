@@ -4,6 +4,7 @@ export class AssetsHandler {
     public static heroesData: any;
     public static loadAssets(heroesData: any) {
         AssetsHandler.heroesData = heroesData;
+        app.loader.add('background1', '../../assets/Heroes_3_Horn_of_the_Abyss_1_5_1.jpg');
         heroesData.forEach((hero: any) => {
             app.loader
                 .add(`${hero.name}_front_default`, hero.sprites.front_default)

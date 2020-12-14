@@ -7,7 +7,7 @@ import { AssetsHandler } from './Utils/AssetsHandler';
 import { AnimationsProvider } from './Utils/AnimationsProvider';
 import { Howl } from 'howler';
 export class App {
-
+    public static background1: PIXI.Sprite;
     public static battleSound: any;
     public static hitSound: any;
     private static _battleMode: boolean = false;
@@ -25,6 +25,10 @@ export class App {
 
     constructor() {
         document.body.appendChild(app.view);
+        App.background1 = PIXI.Sprite.from(app.loader.resources[`background1`].url);
+        App.background1.width = app.view.width;
+        App.background1.height = app.view.height +  app.view.height / 5.5;
+        app.stage.addChild(App.background1)
         Hero.createHeroes(AssetsHandler.heroesData);
         App.timeline = gsap.timeline();
         App.text.position.x = app.view.width / 2;

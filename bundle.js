@@ -1,4 +1,730 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.App = void 0;
+const tslib_1 = require("tslib");
+const index_1 = require("./index");
+const Hero_1 = require("./Hero/Hero");
+const HeroType_1 = require("./Hero/HeroType");
+const Button_1 = require("./Utils/Button");
+const gsap_1 = tslib_1.__importDefault(require("gsap"));
+const AssetsHandler_1 = require("./Utils/AssetsHandler");
+const AnimationsProvider_1 = require("./Utils/AnimationsProvider");
+const howler_1 = require("howler");
+class App {
+    constructor() {
+        document.body.appendChild(index_1.app.view);
+        App.background1 = PIXI.Sprite.from(index_1.app.loader.resources[`background1`].url);
+        App.background1.width = index_1.app.view.width;
+        App.background1.height = index_1.app.view.height + index_1.app.view.height / 5.5;
+        index_1.app.stage.addChild(App.background1);
+        Hero_1.Hero.createHeroes(AssetsHandler_1.AssetsHandler.heroesData);
+        App.timeline = gsap_1.default.timeline();
+        App.text.position.x = index_1.app.view.width / 2;
+        App.text.position.y = index_1.app.view.height / 3;
+        App.text.anchor.set(0.5);
+        App.battleSound = new howler_1.Howl({
+            src: ['../assets/battle.mp3'],
+            volume: 0.5,
+        });
+        App.hitSound = new howler_1.Howl({
+            src: ['../assets/hit.wav'],
+            volume: 1,
+        });
+        this.init();
+    }
+    ;
+    static newGame() {
+        for (let i = index_1.app.stage.children.length - 1; i >= 0; i--) {
+            index_1.app.stage.removeChild(index_1.app.stage.children[i]);
+        }
+        ;
+        new App();
+    }
+    ;
+    init() {
+        Hero_1.Hero.heroes.forEach(hero => {
+            hero.showYourself(Math.random() * index_1.app.view.width, Math.random() * index_1.app.view.height);
+        });
+        AnimationsProvider_1.AnimationsProvider.previewHeroes();
+        index_1.app.ticker.start();
+    }
+    ;
+    static readyForBattle(hero) {
+        App.toggleBattleMode(true);
+        App.battleSound.play();
+        AnimationsProvider_1.AnimationsProvider.hideHeroes();
+        setTimeout(() => tslib_1.__awaiter(this, void 0, void 0, function* () {
+            yield Hero_1.Hero.heroes.forEach(hero => index_1.app.stage.removeChild(hero.sprite));
+        }), 1001);
+        setTimeout(() => tslib_1.__awaiter(this, void 0, void 0, function* () {
+            hero.heroType = HeroType_1.HeroType.Player;
+            hero.setBattleMode(true);
+            App.playerHero = hero;
+            index_1.app.stage.addChild(hero.sprite);
+            App.selectOpponent();
+            index_1.app.stage.addChild(App.opponentHero.sprite);
+            App.battle();
+        }), 2000);
+    }
+    ;
+    static battle() {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            const sequnce = App.determineSequence();
+            const fasterCreature = sequnce[0];
+            const slowerCreature = sequnce[1];
+            fasterCreature.healthBar.toggleBar(true);
+            slowerCreature.healthBar.toggleBar(true);
+            while (fasterCreature.currentHitPoints > 0 && slowerCreature.currentHitPoints > 0) {
+                if (fasterCreature.currentHitPoints > 0 && slowerCreature.currentHitPoints > 0) {
+                    yield AnimationsProvider_1.AnimationsProvider.creatureAttackAnimation(fasterCreature);
+                }
+                else {
+                    break;
+                }
+                ;
+                const fasterCreatureDamage = fasterCreature.attack(slowerCreature);
+                if (slowerCreature.currentHitPoints > 0 && fasterCreatureDamage > 0 && fasterCreature.currentHitPoints > 0) {
+                    yield AnimationsProvider_1.AnimationsProvider.creatureBlinkAnimation(slowerCreature);
+                }
+                else {
+                    break;
+                }
+                ;
+                if (slowerCreature.currentHitPoints > 0 && fasterCreature.currentHitPoints > 0) {
+                    yield AnimationsProvider_1.AnimationsProvider.creatureAttackAnimation(slowerCreature);
+                }
+                else {
+                    break;
+                }
+                ;
+                const slowerCreatureDamage = slowerCreature.attack(fasterCreature);
+                if (fasterCreature.currentHitPoints > 0 && slowerCreatureDamage > 0 && slowerCreature.currentHitPoints > 0) {
+                    yield AnimationsProvider_1.AnimationsProvider.creatureBlinkAnimation(fasterCreature);
+                }
+                else {
+                    break;
+                }
+                ;
+            }
+            ;
+            if (fasterCreature.currentHitPoints <= 0) {
+                fasterCreature.sprite.tint = 0x000000;
+                App.winner = App.determineWinner(slowerCreature);
+            }
+            ;
+            if (slowerCreature.currentHitPoints <= 0) {
+                slowerCreature.sprite.tint = 0x000000;
+                App.winner = App.determineWinner(fasterCreature);
+            }
+            ;
+            App.text.text = App.winner;
+            index_1.app.stage.addChild(App.text);
+            new Button_1.Button();
+        });
+    }
+    ;
+    static determineWinner(creature) {
+        return (creature.heroType === HeroType_1.HeroType.Player) ? 'You Win' : 'You Lose';
+    }
+    ;
+    static determineSequence() {
+        const sequence = [App.playerHero, App.opponentHero];
+        if (App.playerHero._speed != App.opponentHero._speed) {
+            sequence.sort((creature1, creature2) => creature2._speed - creature1._speed);
+        }
+        else {
+            sequence.sort((creature1, creature2) => creature2.moral - creature1.moral);
+        }
+        ;
+        return sequence;
+    }
+    ;
+    static selectOpponent() {
+        let id = Math.random() * 19;
+        App.opponentHero = Hero_1.Hero.heroes[Math.floor(id)];
+        App.opponentHero.heroType = HeroType_1.HeroType.Opponent;
+        App.opponentHero.setBattleMode(true);
+    }
+    ;
+    static toggleBattleMode(value) {
+        App._battleMode = value;
+    }
+    ;
+}
+exports.App = App;
+App._battleMode = false;
+App.text = new PIXI.Text("default", {
+    fontSize: 100,
+    fill: 0x000000,
+    align: "center",
+    stroke: "#bbbbbb",
+    strokeThickness: 0,
+});
+;
+
+},{"./Hero/Hero":3,"./Hero/HeroType":5,"./Utils/AnimationsProvider":7,"./Utils/AssetsHandler":8,"./Utils/Button":9,"./index":11,"gsap":12,"howler":13,"tslib":14}],2:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.HealthBar = void 0;
+const tslib_1 = require("tslib");
+const index_1 = require("../index");
+const HeroType_1 = require("./HeroType");
+class HealthBar {
+    constructor(hitPoints, currentHitPoints) {
+        this._position = {
+            startPoint: {
+                x: 0,
+                y: 0
+            },
+            endPoint: {
+                x: 0,
+                y: 0
+            },
+        };
+        this.bar = new PIXI.Graphics();
+        this._hitPoints = hitPoints;
+        this._currentHitPoints = currentHitPoints;
+        this.createHpBar(this._currentHitPoints, this._hitPoints, 0x84F10F);
+    }
+    ;
+    createHpBar(currentHitPoints, hitPoints, color) {
+        this.bar.beginFill(color);
+        let hpPortion = this._currentHitPoints / this._hitPoints;
+        this.bar.drawPolygon([
+            50, 80,
+            50 + (400 * hpPortion), 80,
+            32 + (400 * hpPortion), 150,
+            32, 150,
+        ]);
+        this.bar.endFill();
+    }
+    ;
+    updateHitpoints(value) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            this.createHpBar(this._currentHitPoints, this._hitPoints, 0xFF0000);
+            this._currentHitPoints = value;
+            yield index_1.app.stage.removeChild(this.bar);
+            yield this.bar.beginFill(0x84F10F);
+            let hpPortion = this._currentHitPoints / this._hitPoints;
+            (hpPortion < 0) && (hpPortion = 0);
+            yield this.bar.drawPolygon([
+                50, 80,
+                50 + (400 * hpPortion), 80,
+                32 + (400 * hpPortion), 150,
+                32, 150,
+            ]);
+            yield this.bar.endFill();
+            yield index_1.app.stage.addChild(this.bar);
+        });
+    }
+    ;
+    set type(type) {
+        this._type = type;
+        this.bar.position.x =
+            (this._type === HeroType_1.HeroType.Player)
+                ? index_1.app.view.width / 10
+                : index_1.app.view.width * 6.5 / 10;
+        this.bar.position.y = index_1.app.view.height * 8 / 10;
+    }
+    ;
+    toggleBar(state) {
+        state
+            ? index_1.app.stage.addChild(this.bar)
+            : index_1.app.stage.removeChild(this.bar);
+    }
+    ;
+}
+exports.HealthBar = HealthBar;
+;
+
+},{"../index":11,"./HeroType":5,"tslib":14}],3:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Hero = void 0;
+const index_1 = require("../index");
+const SpriteView_1 = require("../SpriteView");
+const HeroInfo_1 = require("./HeroInfo");
+const HealthBar_1 = require("./HealthBar");
+const HeroType_1 = require("./HeroType");
+const App_1 = require("../App");
+class Hero {
+    constructor(heroStats) {
+        this._battleMode = false;
+        this._id = heroStats.id - 1;
+        this._name = heroStats.name;
+        this._ability = heroStats.ability;
+        this._moves = heroStats.moves;
+        this._speed = heroStats.primaryStats.speed;
+        this._special_defense = heroStats.primaryStats['special-defense'];
+        this._special_attack = heroStats.primaryStats['special-attack'];
+        this._defense = heroStats.primaryStats.defense;
+        this._attack = heroStats.primaryStats.attack;
+        this._hitPoints = heroStats.primaryStats.hp;
+        this._currentHitPoints = this._hitPoints;
+        this._appearance = Object.assign({}, Hero.appearancePosition);
+        this._moral = Hero.moral;
+        this._heroType = HeroType_1.HeroType.Opponent;
+        heroStats.primaryStats.moral = this.moral;
+        this._healthBar = new HealthBar_1.HealthBar(this._hitPoints, this._currentHitPoints);
+        this._healthBar.type = HeroType_1.HeroType.Opponent;
+        this.sprite_front_default = PIXI.Sprite.from(index_1.app.loader.resources[`${this._name}_front_default`].url);
+        this._sprite_back_default = PIXI.Sprite.from(index_1.app.loader.resources[`${this._name}_back_default`].url);
+        this.heroInfo = new HeroInfo_1.HeroInfo(heroStats, index_1.app.loader.resources[`${this._name}_front_default`].url);
+    }
+    ;
+    attack(victim) {
+        const damage = (this._attack / victim._defense) * Math.round(Math.random() * 30); // 200 is too much, isn't it?
+        (damage > 0) && (victim.currentHitPoints -= damage);
+        victim.healthBar.updateHitpoints(victim.currentHitPoints);
+        App_1.App.hitSound.play();
+        return damage;
+    }
+    ;
+    showYourself(xPosition = index_1.app.view.width / 2, yPosition = index_1.app.view.height / 2, view = SpriteView_1.SpriteView.sprite_front_default, scaleX = 1, scaleY = 1) {
+        switch (view) {
+            case SpriteView_1.SpriteView.sprite_front_default:
+                this.sprite = this.sprite_front_default;
+                break;
+            case SpriteView_1.SpriteView.sprite_back_default:
+                this.sprite = this.sprite_back_default;
+                break;
+        }
+        ;
+        this.sprite.scale.x = scaleX;
+        this.sprite.scale.y = scaleY;
+        this.sprite.x = xPosition;
+        this.sprite.y = yPosition;
+        this.sprite.anchor.set(0.5);
+        this.sprite.buttonMode = true;
+        this.sprite.interactive = true;
+        this.sprite.on("pointerdown", () => {
+            this._battleMode = true;
+            this.heroType = HeroType_1.HeroType.Player;
+            this._healthBar.type = HeroType_1.HeroType.Player;
+            App_1.App.readyForBattle(this);
+            Hero.heroes = Hero.heroes.filter(hero => hero.id !== this.id);
+        });
+        this.sprite.on("pointerover", () => {
+            this.sprite.tint = 0x1AE8EA;
+            this.heroInfo.toggleVisible();
+        });
+        this.sprite.on("pointerout", () => {
+            this.sprite.tint = 16777215;
+            this.heroInfo.toggleVisible();
+        });
+        index_1.app.stage.addChild(this.sprite);
+    }
+    ;
+    setBattleMode(mode) {
+        this._battleMode = mode;
+        if (this._battleMode) {
+            if (this._heroType === HeroType_1.HeroType.Player) {
+                this.sprite = this.sprite_back_default;
+                this.sprite.x = index_1.app.view.width / 9;
+                this.sprite.y = index_1.app.view.height / 2;
+            }
+            else if (this._heroType === HeroType_1.HeroType.Opponent) {
+                this.sprite.x = index_1.app.view.width * 9 / 10;
+                this.sprite.y = index_1.app.view.height / 2;
+            }
+            this.sprite.anchor.set(0.5);
+            this.sprite.scale.x = 3.4;
+            this.sprite.scale.y = 3.4;
+            this.sprite.buttonMode = false;
+            this.sprite.interactive = false;
+            this.sprite.visible = true;
+        }
+        else {
+            this.sprite = this.sprite_front_default;
+            this.sprite.scale.x = 1;
+            this.sprite.scale.y = 1;
+            this.sprite.visible = true;
+        }
+        ;
+    }
+    ;
+    static createHeroes(heroesData) {
+        Hero.heroes = [];
+        heroesData.map((hero) => {
+            Hero.heroes.push(new Hero(this.getHeroStats(hero)));
+        });
+        Hero._appearancePosition = { x: 0, y: 60 };
+    }
+    ;
+    static getHeroStats(heroFullStack) {
+        const id = heroFullStack.id;
+        const ability = heroFullStack.abilities.find((ability) => {
+            return ability.is_hidden === false;
+        }).ability.name;
+        const moves = heroFullStack.moves.slice().splice(0, 4).map((move) => {
+            return move.move.name;
+        });
+        const primaryStats = heroFullStack.stats.reduce((heroStatsContainer, stat) => {
+            heroStatsContainer = Object.assign(Object.assign({}, heroStatsContainer), { [stat.stat.name]: stat.base_stat });
+            return heroStatsContainer;
+        }, {});
+        return {
+            id,
+            name: heroFullStack.name,
+            ability,
+            moves,
+            primaryStats
+        };
+    }
+    ;
+    getBounds() {
+        return this.sprite_front_default.getBounds();
+    }
+    ;
+    removeHero() {
+        index_1.app.stage.removeChild(this.sprite);
+    }
+    ;
+    static get appearancePosition() {
+        if (Hero._appearancePosition.x > index_1.app.view.width * 18 / 20) { //* 9 / 10
+            Hero._appearancePosition.x = 0;
+            Hero._appearancePosition.y += index_1.app.view.height * 3 / 20; //+= 100;
+        }
+        ;
+        Hero._appearancePosition.x += index_1.app.view.width / 11;
+        return Hero._appearancePosition;
+    }
+    ;
+    static get moral() {
+        const currentMoral = Hero._moral--;
+        return currentMoral;
+    }
+    ;
+    get moral() {
+        return this._moral;
+    }
+    ;
+    get id() {
+        return this._id;
+    }
+    ;
+    get sprite_back_default() {
+        return this._sprite_back_default;
+    }
+    ;
+    set heroType(type) {
+        this._heroType = type;
+        this._healthBar.type = type;
+    }
+    ;
+    get heroType() {
+        return this._heroType;
+    }
+    ;
+    set x(value) {
+        this.sprite.x = value;
+    }
+    ;
+    get x() {
+        return this.sprite.x;
+    }
+    ;
+    set y(value) {
+        this.sprite.y = value;
+    }
+    ;
+    get y() {
+        return this.sprite.y;
+    }
+    ;
+    get movementSpeed() {
+        return this._speed;
+    }
+    ;
+    get hitPoints() {
+        return this._hitPoints;
+    }
+    ;
+    set hitPoints(value) {
+        this._hitPoints = value;
+    }
+    ;
+    get currentHitPoints() {
+        return this._currentHitPoints;
+    }
+    ;
+    set currentHitPoints(value) {
+        this._currentHitPoints = value;
+    }
+    ;
+    get name() {
+        return this._name;
+    }
+    ;
+    get healthBar() {
+        return this._healthBar;
+    }
+    ;
+}
+exports.Hero = Hero;
+Hero.heroes = [];
+Hero._appearancePosition = { x: 0, y: 60 };
+Hero._moral = 30;
+;
+
+},{"../App":1,"../SpriteView":6,"../index":11,"./HealthBar":2,"./HeroInfo":4,"./HeroType":5}],4:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.HeroInfo = void 0;
+const index_1 = require("../index");
+class HeroInfo {
+    constructor(heroInfo, texture) {
+        this._isVisible = false;
+        this.sprite = PIXI.Sprite.from(texture);
+        this.sprite.scale.x = 4;
+        this.sprite.scale.y = 4;
+        this.sprite.x = index_1.app.view.width / 3;
+        this.sprite.y = index_1.app.view.height / 1.8;
+        this.sprite.anchor.set(0.5);
+        this.sprite.visible = this._isVisible;
+        index_1.app.stage.addChild(this.sprite);
+        this.info = new PIXI.Text(`        Name: ${heroInfo.name}
+        Ability: ${heroInfo.ability}
+        Move 1: ${heroInfo.moves[0]}
+        Move 2: ${heroInfo.moves[1]}
+        Move 3: ${heroInfo.moves[2]}
+        Move 4: ${heroInfo.moves[3]}
+        Speed: ${heroInfo.primaryStats.speed}
+        Special defense: ${heroInfo.primaryStats['special-defense']}
+        Special attack: ${heroInfo.primaryStats['special-attack']}
+        Defense: ${heroInfo.primaryStats.defense}
+        Attack: ${heroInfo.primaryStats.attack}
+        HP: ${heroInfo.primaryStats.hp}
+        Moral: ${heroInfo.primaryStats.moral}`);
+        this.info.x = index_1.app.view.width / 1.8;
+        this.info.y = index_1.app.view.height / 1.8;
+        this.info.anchor.set(0.5);
+        this.info.visible = this._isVisible;
+        index_1.app.stage.addChild(this.info);
+    }
+    ;
+    toggleVisible() {
+        this._isVisible = !this._isVisible;
+        this.sprite.visible = this._isVisible;
+        this.info.visible = this._isVisible;
+    }
+    ;
+}
+exports.HeroInfo = HeroInfo;
+;
+
+},{"../index":11}],5:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.HeroType = void 0;
+var HeroType;
+(function (HeroType) {
+    HeroType[HeroType["Player"] = 1] = "Player";
+    HeroType[HeroType["Opponent"] = 2] = "Opponent";
+})(HeroType = exports.HeroType || (exports.HeroType = {}));
+;
+
+},{}],6:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SpriteView = void 0;
+var SpriteView;
+(function (SpriteView) {
+    SpriteView[SpriteView["sprite_front_default"] = 1] = "sprite_front_default";
+    SpriteView[SpriteView["sprite_back_default"] = 3] = "sprite_back_default";
+})(SpriteView = exports.SpriteView || (exports.SpriteView = {}));
+;
+
+},{}],7:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AnimationsProvider = void 0;
+const tslib_1 = require("tslib");
+const Hero_1 = require("../Hero/Hero");
+const HeroType_1 = require("../Hero/HeroType");
+const App_1 = require("../App");
+const index_1 = require("../index");
+class AnimationsProvider {
+    static creatureAttackAnimation(creature) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            yield App_1.App.timeline.to(creature.sprite, {
+                x: (creature.heroType === HeroType_1.HeroType.Player)
+                    ? index_1.app.view.width * 17 / 20
+                    : index_1.app.view.width * 4 / 20,
+                duration: 0.5,
+                repeat: 1,
+                yoyo: true,
+            });
+        });
+    }
+    ;
+    static creatureBlinkAnimation(creature) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            yield App_1.App.timeline.to(creature.sprite, {
+                alpha: 0,
+                duration: 0.1,
+                repeat: 5,
+                yoyo: true,
+            });
+        });
+    }
+    ;
+    static previewHeroes() {
+        Hero_1.Hero.heroes.forEach(hero => {
+            gsap.to(hero.sprite, {
+                x: hero._appearance.x,
+                y: hero._appearance.y,
+                duration: 1.0,
+                repeat: 0,
+                yoyo: false,
+                rotation: 2 * Math.PI,
+            });
+        });
+    }
+    ;
+    static hideHeroes() {
+        Hero_1.Hero.heroes.forEach(hero => {
+            gsap.to(hero.sprite, {
+                x: Math.random() * index_1.app.view.width,
+                y: Math.random() * index_1.app.view.height + index_1.app.view.height + 100,
+                duration: 1.0,
+                repeat: 0,
+                yoyo: false,
+                rotation: 2 * Math.PI,
+            });
+        });
+    }
+    ;
+}
+exports.AnimationsProvider = AnimationsProvider;
+;
+
+},{"../App":1,"../Hero/Hero":3,"../Hero/HeroType":5,"../index":11,"tslib":14}],8:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AssetsHandler = void 0;
+const index_1 = require("../index");
+const App_1 = require("../App");
+class AssetsHandler {
+    static loadAssets(heroesData) {
+        AssetsHandler.heroesData = heroesData;
+        index_1.app.loader.add('background1', '../../assets/Heroes_3_Horn_of_the_Abyss_1_5_1.jpg');
+        heroesData.forEach((hero) => {
+            index_1.app.loader
+                .add(`${hero.name}_front_default`, hero.sprites.front_default)
+                .add(`${hero.name}_back_default`, hero.sprites.back_default);
+        });
+        index_1.app.loader.onProgress.add(this.showProgress);
+        index_1.app.loader.onComplete.add(() => this.doneLoading());
+        index_1.app.loader.onError.add(this.reportError);
+        index_1.app.loader.load();
+        index_1.app.stage.interactive = true;
+    }
+    ;
+    static doneLoading() {
+        new App_1.App();
+    }
+    ;
+    static showProgress(e) {
+        console.log(e.progress);
+    }
+    ;
+    static reportError(e) {
+        console.log('ERROR : ' + e.message);
+    }
+    ;
+}
+exports.AssetsHandler = AssetsHandler;
+;
+
+},{"../App":1,"../index":11}],9:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Button = void 0;
+const __1 = require("..");
+const App_1 = require("../App");
+class Button {
+    constructor() {
+        this.button = new PIXI.Graphics();
+        this.text = new PIXI.Text("New Game", {
+            fontSize: 30,
+            fill: 0x000000,
+            align: "center",
+            stroke: "#bbbbbb",
+            strokeThickness: 0,
+        });
+        App_1.App.battleSound.stop();
+        this.button.beginFill(0xff0000);
+        this.button.lineStyle(5, 0x00ff00);
+        this.button.drawRect(__1.app.view.width / 2 - 90, __1.app.view.height / 2 - 40, 180, 80);
+        this.button.endFill();
+        this.button.buttonMode = true;
+        this.button.interactive = true;
+        this.button.on("pointerdown", () => {
+            App_1.App.newGame();
+        });
+        this.text.position.x = __1.app.view.width / 2;
+        this.text.position.y = __1.app.view.height / 2;
+        this.text.anchor.set(0.5);
+        __1.app.stage.addChild(this.button);
+        __1.app.stage.addChild(this.text);
+    }
+    ;
+    removeButton() {
+        __1.app.stage.removeChild(this.button);
+        __1.app.stage.removeChild(this.text);
+    }
+    ;
+}
+exports.Button = Button;
+;
+
+},{"..":11,"../App":1}],10:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ResourcesProvider = void 0;
+const tslib_1 = require("tslib");
+class ResourcesProvider {
+    static fetchUnits() {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            const cachedHeroes = localStorage.getItem('heroes');
+            if (cachedHeroes) {
+                return JSON.parse(cachedHeroes);
+            }
+            ;
+            const response = yield fetch('https://pokeapi.co/api/v2/pokemon/');
+            const collection = (yield response.json()).results;
+            const result = [];
+            yield Promise.all(collection.map((item) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+                const itemResult = yield (yield fetch(item.url)).json();
+                result.push(itemResult);
+            })));
+            const sorted = result.sort((a, b) => a.id - b.id);
+            localStorage.setItem('heroes', JSON.stringify(sorted));
+            return sorted;
+        });
+    }
+    ;
+}
+exports.ResourcesProvider = ResourcesProvider;
+;
+
+},{"tslib":14}],11:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.app = void 0;
+const ResourcesProvider_1 = require("./Utils/ResourcesProvider");
+const AssetsHandler_1 = require("./Utils/AssetsHandler");
+exports.app = new PIXI.Application({
+    width: window.innerWidth - 15,
+    height: window.innerHeight - 25,
+    backgroundColor: 0xAAFFFF,
+});
+ResourcesProvider_1.ResourcesProvider.fetchUnits()
+    .then(heroesData => AssetsHandler_1.AssetsHandler.loadAssets(heroesData));
+
+},{"./Utils/AssetsHandler":8,"./Utils/ResourcesProvider":10}],12:[function(require,module,exports){
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -4827,7 +5553,7 @@
 
 })));
 
-},{}],2:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 (function (global){(function (){
 /*!
  *  howler.js v2.2.1
@@ -8056,7 +8782,7 @@
 })();
 
 }).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],3:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 (function (global){(function (){
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -8344,725 +9070,4 @@ var __createBinding;
 });
 
 }).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],4:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.App = void 0;
-const tslib_1 = require("tslib");
-const index_1 = require("./index");
-const Hero_1 = require("./Hero/Hero");
-const HeroType_1 = require("./Hero/HeroType");
-const Button_1 = require("./Utils/Button");
-const gsap_1 = tslib_1.__importDefault(require("gsap"));
-const AssetsHandler_1 = require("./Utils/AssetsHandler");
-const AnimationsProvider_1 = require("./Utils/AnimationsProvider");
-const howler_1 = require("howler");
-class App {
-    constructor() {
-        document.body.appendChild(index_1.app.view);
-        Hero_1.Hero.createHeroes(AssetsHandler_1.AssetsHandler.heroesData);
-        App.timeline = gsap_1.default.timeline();
-        App.text.position.x = index_1.app.view.width / 2;
-        App.text.position.y = index_1.app.view.height / 3;
-        App.text.anchor.set(0.5);
-        App.battleSound = new howler_1.Howl({
-            src: ['../assets/battle.mp3'],
-            volume: 0.5,
-        });
-        App.hitSound = new howler_1.Howl({
-            src: ['../assets/hit.wav'],
-            volume: 1,
-        });
-        this.init();
-    }
-    ;
-    static newGame() {
-        for (let i = index_1.app.stage.children.length - 1; i >= 0; i--) {
-            index_1.app.stage.removeChild(index_1.app.stage.children[i]);
-        }
-        ;
-        new App();
-    }
-    ;
-    init() {
-        Hero_1.Hero.heroes.forEach(hero => {
-            hero.showYourself(Math.random() * index_1.app.view.width, Math.random() * index_1.app.view.height);
-        });
-        AnimationsProvider_1.AnimationsProvider.previewHeroes();
-        index_1.app.ticker.start();
-    }
-    ;
-    static readyForBattle(hero) {
-        App.toggleBattleMode(true);
-        App.battleSound.play();
-        AnimationsProvider_1.AnimationsProvider.hideHeroes();
-        setTimeout(() => tslib_1.__awaiter(this, void 0, void 0, function* () {
-            yield Hero_1.Hero.heroes.forEach(hero => index_1.app.stage.removeChild(hero.sprite));
-        }), 1001);
-        setTimeout(() => tslib_1.__awaiter(this, void 0, void 0, function* () {
-            hero.heroType = HeroType_1.HeroType.Player;
-            hero.setBattleMode(true);
-            App.playerHero = hero;
-            index_1.app.stage.addChild(hero.sprite);
-            App.selectOpponent();
-            index_1.app.stage.addChild(App.opponentHero.sprite);
-            App.battle();
-        }), 2000);
-    }
-    ;
-    static battle() {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            const sequnce = App.determineSequence();
-            const fasterCreature = sequnce[0];
-            const slowerCreature = sequnce[1];
-            fasterCreature.healthBar.toggleBar(true);
-            slowerCreature.healthBar.toggleBar(true);
-            while (fasterCreature.currentHitPoints > 0 && slowerCreature.currentHitPoints > 0) {
-                if (fasterCreature.currentHitPoints > 0 && slowerCreature.currentHitPoints > 0) {
-                    yield AnimationsProvider_1.AnimationsProvider.creatureAttackAnimation(fasterCreature);
-                }
-                else {
-                    break;
-                }
-                ;
-                const fasterCreatureDamage = fasterCreature.attack(slowerCreature);
-                if (slowerCreature.currentHitPoints > 0 && fasterCreatureDamage > 0 && fasterCreature.currentHitPoints > 0) {
-                    yield AnimationsProvider_1.AnimationsProvider.creatureBlinkAnimation(slowerCreature);
-                }
-                else {
-                    break;
-                }
-                ;
-                if (slowerCreature.currentHitPoints > 0 && fasterCreature.currentHitPoints > 0) {
-                    yield AnimationsProvider_1.AnimationsProvider.creatureAttackAnimation(slowerCreature);
-                }
-                else {
-                    break;
-                }
-                ;
-                const slowerCreatureDamage = slowerCreature.attack(fasterCreature);
-                if (fasterCreature.currentHitPoints > 0 && slowerCreatureDamage > 0 && slowerCreature.currentHitPoints > 0) {
-                    yield AnimationsProvider_1.AnimationsProvider.creatureBlinkAnimation(fasterCreature);
-                }
-                else {
-                    break;
-                }
-                ;
-            }
-            ;
-            if (fasterCreature.currentHitPoints <= 0) {
-                fasterCreature.sprite.tint = 0x000000;
-                App.winner = App.determineWinner(slowerCreature);
-            }
-            ;
-            if (slowerCreature.currentHitPoints <= 0) {
-                slowerCreature.sprite.tint = 0x000000;
-                App.winner = App.determineWinner(fasterCreature);
-            }
-            ;
-            App.text.text = App.winner;
-            index_1.app.stage.addChild(App.text);
-            new Button_1.Button();
-        });
-    }
-    ;
-    static determineWinner(creature) {
-        return (creature.heroType === HeroType_1.HeroType.Player) ? 'You Win' : 'You Lose';
-    }
-    ;
-    static determineSequence() {
-        const sequence = [App.playerHero, App.opponentHero];
-        if (App.playerHero._speed != App.opponentHero._speed) {
-            sequence.sort((creature1, creature2) => creature2._speed - creature1._speed);
-        }
-        else {
-            sequence.sort((creature1, creature2) => creature2.moral - creature1.moral);
-        }
-        ;
-        return sequence;
-    }
-    ;
-    static selectOpponent() {
-        let id = Math.random() * 19;
-        App.opponentHero = Hero_1.Hero.heroes[Math.floor(id)];
-        App.opponentHero.heroType = HeroType_1.HeroType.Opponent;
-        App.opponentHero.setBattleMode(true);
-    }
-    ;
-    static toggleBattleMode(value) {
-        App._battleMode = value;
-    }
-    ;
-}
-exports.App = App;
-App._battleMode = false;
-App.text = new PIXI.Text("default", {
-    fontSize: 100,
-    fill: 0x000000,
-    align: "center",
-    stroke: "#bbbbbb",
-    strokeThickness: 0,
-});
-;
-
-},{"./Hero/Hero":6,"./Hero/HeroType":8,"./Utils/AnimationsProvider":10,"./Utils/AssetsHandler":11,"./Utils/Button":12,"./index":14,"gsap":1,"howler":2,"tslib":3}],5:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.HealthBar = void 0;
-const tslib_1 = require("tslib");
-const index_1 = require("../index");
-const HeroType_1 = require("./HeroType");
-class HealthBar {
-    constructor(hitPoints, currentHitPoints) {
-        this._position = {
-            startPoint: {
-                x: 0,
-                y: 0
-            },
-            endPoint: {
-                x: 0,
-                y: 0
-            },
-        };
-        this.bar = new PIXI.Graphics();
-        this._hitPoints = hitPoints;
-        this._currentHitPoints = currentHitPoints;
-        this.createHpBar(this._currentHitPoints, this._hitPoints, 0x84F10F);
-    }
-    ;
-    createHpBar(currentHitPoints, hitPoints, color) {
-        this.bar.beginFill(color);
-        let hpPortion = this._currentHitPoints / this._hitPoints;
-        this.bar.drawPolygon([
-            50, 80,
-            50 + (400 * hpPortion), 80,
-            32 + (400 * hpPortion), 150,
-            32, 150,
-        ]);
-        this.bar.endFill();
-    }
-    ;
-    updateHitpoints(value) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            this.createHpBar(this._currentHitPoints, this._hitPoints, 0xFF0000);
-            this._currentHitPoints = value;
-            yield index_1.app.stage.removeChild(this.bar);
-            yield this.bar.beginFill(0x84F10F);
-            let hpPortion = this._currentHitPoints / this._hitPoints;
-            (hpPortion < 0) && (hpPortion = 0);
-            yield this.bar.drawPolygon([
-                50, 80,
-                50 + (400 * hpPortion), 80,
-                32 + (400 * hpPortion), 150,
-                32, 150,
-            ]);
-            yield this.bar.endFill();
-            yield index_1.app.stage.addChild(this.bar);
-        });
-    }
-    ;
-    set type(type) {
-        this._type = type;
-        this.bar.position.x =
-            (this._type === HeroType_1.HeroType.Player)
-                ? index_1.app.view.width / 10
-                : index_1.app.view.width * 6.5 / 10;
-        this.bar.position.y = index_1.app.view.height * 8 / 10;
-    }
-    ;
-    toggleBar(state) {
-        state
-            ? index_1.app.stage.addChild(this.bar)
-            : index_1.app.stage.removeChild(this.bar);
-    }
-    ;
-}
-exports.HealthBar = HealthBar;
-;
-
-},{"../index":14,"./HeroType":8,"tslib":3}],6:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Hero = void 0;
-const index_1 = require("../index");
-const SpriteView_1 = require("../SpriteView");
-const HeroInfo_1 = require("./HeroInfo");
-const HealthBar_1 = require("./HealthBar");
-const HeroType_1 = require("./HeroType");
-const App_1 = require("../App");
-class Hero {
-    constructor(heroStats) {
-        this._battleMode = false;
-        this._id = heroStats.id - 1;
-        this._name = heroStats.name;
-        this._ability = heroStats.ability;
-        this._moves = heroStats.moves;
-        this._speed = heroStats.primaryStats.speed;
-        this._special_defense = heroStats.primaryStats['special-defense'];
-        this._special_attack = heroStats.primaryStats['special-attack'];
-        this._defense = heroStats.primaryStats.defense;
-        this._attack = heroStats.primaryStats.attack;
-        this._hitPoints = heroStats.primaryStats.hp;
-        this._currentHitPoints = this._hitPoints;
-        this._appearance = Object.assign({}, Hero.appearancePosition);
-        this._moral = Hero.moral;
-        this._heroType = HeroType_1.HeroType.Opponent;
-        heroStats.primaryStats.moral = this.moral;
-        this._healthBar = new HealthBar_1.HealthBar(this._hitPoints, this._currentHitPoints);
-        this._healthBar.type = HeroType_1.HeroType.Opponent;
-        this.sprite_front_default = PIXI.Sprite.from(index_1.app.loader.resources[`${this._name}_front_default`].url);
-        this._sprite_back_default = PIXI.Sprite.from(index_1.app.loader.resources[`${this._name}_back_default`].url);
-        this.heroInfo = new HeroInfo_1.HeroInfo(heroStats, index_1.app.loader.resources[`${this._name}_front_default`].url);
-    }
-    ;
-    attack(victim) {
-        const damage = (this._attack / victim._defense) * Math.round(Math.random() * 30); // 200 is too much, isn't it?
-        (damage > 0) && (victim.currentHitPoints -= damage);
-        victim.healthBar.updateHitpoints(victim.currentHitPoints);
-        App_1.App.hitSound.play();
-        return damage;
-    }
-    ;
-    showYourself(xPosition = index_1.app.view.width / 2, yPosition = index_1.app.view.height / 2, view = SpriteView_1.SpriteView.sprite_front_default, scaleX = 1, scaleY = 1) {
-        switch (view) {
-            case SpriteView_1.SpriteView.sprite_front_default:
-                this.sprite = this.sprite_front_default;
-                break;
-            case SpriteView_1.SpriteView.sprite_back_default:
-                this.sprite = this.sprite_back_default;
-                break;
-        }
-        ;
-        this.sprite.scale.x = scaleX;
-        this.sprite.scale.y = scaleY;
-        this.sprite.x = xPosition;
-        this.sprite.y = yPosition;
-        this.sprite.anchor.set(0.5);
-        this.sprite.buttonMode = true;
-        this.sprite.interactive = true;
-        this.sprite.on("pointerdown", () => {
-            this._battleMode = true;
-            this.heroType = HeroType_1.HeroType.Player;
-            this._healthBar.type = HeroType_1.HeroType.Player;
-            App_1.App.readyForBattle(this);
-            Hero.heroes = Hero.heroes.filter(hero => hero.id !== this.id);
-        });
-        this.sprite.on("pointerover", () => {
-            this.sprite.tint = 0x1AE8EA;
-            this.heroInfo.toggleVisible();
-        });
-        this.sprite.on("pointerout", () => {
-            this.sprite.tint = 16777215;
-            this.heroInfo.toggleVisible();
-        });
-        index_1.app.stage.addChild(this.sprite);
-    }
-    ;
-    setBattleMode(mode) {
-        this._battleMode = mode;
-        if (this._battleMode) {
-            if (this._heroType === HeroType_1.HeroType.Player) {
-                this.sprite = this.sprite_back_default;
-                this.sprite.x = index_1.app.view.width / 9;
-                this.sprite.y = index_1.app.view.height / 2;
-            }
-            else if (this._heroType === HeroType_1.HeroType.Opponent) {
-                this.sprite.x = index_1.app.view.width * 9 / 10;
-                this.sprite.y = index_1.app.view.height / 2;
-            }
-            this.sprite.anchor.set(0.5);
-            this.sprite.scale.x = 3.4;
-            this.sprite.scale.y = 3.4;
-            this.sprite.buttonMode = false;
-            this.sprite.interactive = false;
-            this.sprite.visible = true;
-        }
-        else {
-            this.sprite = this.sprite_front_default;
-            this.sprite.scale.x = 1;
-            this.sprite.scale.y = 1;
-            this.sprite.visible = true;
-        }
-        ;
-    }
-    ;
-    static createHeroes(heroesData) {
-        Hero.heroes = [];
-        heroesData.map((hero) => {
-            Hero.heroes.push(new Hero(this.getHeroStats(hero)));
-        });
-        Hero._appearancePosition = { x: 0, y: 60 };
-    }
-    ;
-    static getHeroStats(heroFullStack) {
-        const id = heroFullStack.id;
-        const ability = heroFullStack.abilities.find((ability) => {
-            return ability.is_hidden === false;
-        }).ability.name;
-        const moves = heroFullStack.moves.slice().splice(0, 4).map((move) => {
-            return move.move.name;
-        });
-        const primaryStats = heroFullStack.stats.reduce((heroStatsContainer, stat) => {
-            heroStatsContainer = Object.assign(Object.assign({}, heroStatsContainer), { [stat.stat.name]: stat.base_stat });
-            return heroStatsContainer;
-        }, {});
-        return {
-            id,
-            name: heroFullStack.name,
-            ability,
-            moves,
-            primaryStats
-        };
-    }
-    ;
-    getBounds() {
-        return this.sprite_front_default.getBounds();
-    }
-    ;
-    removeHero() {
-        index_1.app.stage.removeChild(this.sprite);
-    }
-    ;
-    static get appearancePosition() {
-        if (Hero._appearancePosition.x > index_1.app.view.width * 18 / 20) { //* 9 / 10
-            Hero._appearancePosition.x = 0;
-            Hero._appearancePosition.y += index_1.app.view.height * 3 / 20; //+= 100;
-        }
-        ;
-        Hero._appearancePosition.x += index_1.app.view.width / 11;
-        return Hero._appearancePosition;
-    }
-    ;
-    static get moral() {
-        const currentMoral = Hero._moral--;
-        return currentMoral;
-    }
-    ;
-    get moral() {
-        return this._moral;
-    }
-    ;
-    get id() {
-        return this._id;
-    }
-    ;
-    get sprite_back_default() {
-        return this._sprite_back_default;
-    }
-    ;
-    set heroType(type) {
-        this._heroType = type;
-        this._healthBar.type = type;
-    }
-    ;
-    get heroType() {
-        return this._heroType;
-    }
-    ;
-    set x(value) {
-        this.sprite.x = value;
-    }
-    ;
-    get x() {
-        return this.sprite.x;
-    }
-    ;
-    set y(value) {
-        this.sprite.y = value;
-    }
-    ;
-    get y() {
-        return this.sprite.y;
-    }
-    ;
-    get movementSpeed() {
-        return this._speed;
-    }
-    ;
-    get hitPoints() {
-        return this._hitPoints;
-    }
-    ;
-    set hitPoints(value) {
-        this._hitPoints = value;
-    }
-    ;
-    get currentHitPoints() {
-        return this._currentHitPoints;
-    }
-    ;
-    set currentHitPoints(value) {
-        this._currentHitPoints = value;
-    }
-    ;
-    get name() {
-        return this._name;
-    }
-    ;
-    get healthBar() {
-        return this._healthBar;
-    }
-    ;
-}
-exports.Hero = Hero;
-Hero.heroes = [];
-Hero._appearancePosition = { x: 0, y: 60 };
-Hero._moral = 30;
-;
-
-},{"../App":4,"../SpriteView":9,"../index":14,"./HealthBar":5,"./HeroInfo":7,"./HeroType":8}],7:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.HeroInfo = void 0;
-const index_1 = require("../index");
-class HeroInfo {
-    constructor(heroInfo, texture) {
-        this._isVisible = false;
-        this.sprite = PIXI.Sprite.from(texture);
-        this.sprite.scale.x = 4;
-        this.sprite.scale.y = 4;
-        this.sprite.x = index_1.app.view.width / 3;
-        this.sprite.y = index_1.app.view.height / 1.8;
-        this.sprite.anchor.set(0.5);
-        this.sprite.visible = this._isVisible;
-        index_1.app.stage.addChild(this.sprite);
-        this.info = new PIXI.Text(`        Name: ${heroInfo.name}
-        Ability: ${heroInfo.ability}
-        Move 1: ${heroInfo.moves[0]}
-        Move 2: ${heroInfo.moves[1]}
-        Move 3: ${heroInfo.moves[2]}
-        Move 4: ${heroInfo.moves[3]}
-        Speed: ${heroInfo.primaryStats.speed}
-        Special defense: ${heroInfo.primaryStats['special-defense']}
-        Special attack: ${heroInfo.primaryStats['special-attack']}
-        Defense: ${heroInfo.primaryStats.defense}
-        Attack: ${heroInfo.primaryStats.attack}
-        HP: ${heroInfo.primaryStats.hp}
-        Moral: ${heroInfo.primaryStats.moral}`);
-        this.info.x = index_1.app.view.width / 1.8;
-        this.info.y = index_1.app.view.height / 1.8;
-        this.info.anchor.set(0.5);
-        this.info.visible = this._isVisible;
-        index_1.app.stage.addChild(this.info);
-    }
-    ;
-    toggleVisible() {
-        this._isVisible = !this._isVisible;
-        this.sprite.visible = this._isVisible;
-        this.info.visible = this._isVisible;
-    }
-    ;
-}
-exports.HeroInfo = HeroInfo;
-;
-
-},{"../index":14}],8:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.HeroType = void 0;
-var HeroType;
-(function (HeroType) {
-    HeroType[HeroType["Player"] = 1] = "Player";
-    HeroType[HeroType["Opponent"] = 2] = "Opponent";
-})(HeroType = exports.HeroType || (exports.HeroType = {}));
-;
-
-},{}],9:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.SpriteView = void 0;
-var SpriteView;
-(function (SpriteView) {
-    SpriteView[SpriteView["sprite_front_default"] = 1] = "sprite_front_default";
-    SpriteView[SpriteView["sprite_back_default"] = 3] = "sprite_back_default";
-})(SpriteView = exports.SpriteView || (exports.SpriteView = {}));
-;
-
-},{}],10:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.AnimationsProvider = void 0;
-const tslib_1 = require("tslib");
-const Hero_1 = require("../Hero/Hero");
-const HeroType_1 = require("../Hero/HeroType");
-const App_1 = require("../App");
-const index_1 = require("../index");
-class AnimationsProvider {
-    static creatureAttackAnimation(creature) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            yield App_1.App.timeline.to(creature.sprite, {
-                x: (creature.heroType === HeroType_1.HeroType.Player)
-                    ? index_1.app.view.width * 17 / 20
-                    : index_1.app.view.width * 4 / 20,
-                duration: 0.5,
-                repeat: 1,
-                yoyo: true,
-            });
-        });
-    }
-    ;
-    static creatureBlinkAnimation(creature) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            yield App_1.App.timeline.to(creature.sprite, {
-                alpha: 0,
-                duration: 0.1,
-                repeat: 5,
-                yoyo: true,
-            });
-        });
-    }
-    ;
-    static previewHeroes() {
-        Hero_1.Hero.heroes.forEach(hero => {
-            gsap.to(hero.sprite, {
-                x: hero._appearance.x,
-                y: hero._appearance.y,
-                duration: 1.0,
-                repeat: 0,
-                yoyo: false,
-                rotation: 2 * Math.PI,
-            });
-        });
-    }
-    ;
-    static hideHeroes() {
-        Hero_1.Hero.heroes.forEach(hero => {
-            gsap.to(hero.sprite, {
-                x: Math.random() * index_1.app.view.width,
-                y: Math.random() * index_1.app.view.height + index_1.app.view.height + 100,
-                duration: 1.0,
-                repeat: 0,
-                yoyo: false,
-                rotation: 2 * Math.PI,
-            });
-        });
-    }
-    ;
-}
-exports.AnimationsProvider = AnimationsProvider;
-;
-
-},{"../App":4,"../Hero/Hero":6,"../Hero/HeroType":8,"../index":14,"tslib":3}],11:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.AssetsHandler = void 0;
-const index_1 = require("../index");
-const App_1 = require("../App");
-class AssetsHandler {
-    static loadAssets(heroesData) {
-        AssetsHandler.heroesData = heroesData;
-        heroesData.forEach((hero) => {
-            index_1.app.loader
-                .add(`${hero.name}_front_default`, hero.sprites.front_default)
-                .add(`${hero.name}_back_default`, hero.sprites.back_default);
-        });
-        index_1.app.loader.onProgress.add(this.showProgress);
-        index_1.app.loader.onComplete.add(() => this.doneLoading());
-        index_1.app.loader.onError.add(this.reportError);
-        index_1.app.loader.load();
-        index_1.app.stage.interactive = true;
-    }
-    ;
-    static doneLoading() {
-        new App_1.App();
-    }
-    ;
-    static showProgress(e) {
-        console.log(e.progress);
-    }
-    ;
-    static reportError(e) {
-        console.log('ERROR : ' + e.message);
-    }
-    ;
-}
-exports.AssetsHandler = AssetsHandler;
-;
-
-},{"../App":4,"../index":14}],12:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Button = void 0;
-const __1 = require("..");
-const App_1 = require("../App");
-class Button {
-    constructor() {
-        this.button = new PIXI.Graphics();
-        this.text = new PIXI.Text("New Game", {
-            fontSize: 30,
-            fill: 0x000000,
-            align: "center",
-            stroke: "#bbbbbb",
-            strokeThickness: 0,
-        });
-        App_1.App.battleSound.stop();
-        this.button.beginFill(0xff0000);
-        this.button.lineStyle(5, 0x00ff00);
-        this.button.drawRect(__1.app.view.width / 2 - 90, __1.app.view.height / 2 - 40, 180, 80);
-        this.button.endFill();
-        this.button.buttonMode = true;
-        this.button.interactive = true;
-        this.button.on("pointerdown", () => {
-            App_1.App.newGame();
-        });
-        this.text.position.x = __1.app.view.width / 2;
-        this.text.position.y = __1.app.view.height / 2;
-        this.text.anchor.set(0.5);
-        __1.app.stage.addChild(this.button);
-        __1.app.stage.addChild(this.text);
-    }
-    ;
-    removeButton() {
-        __1.app.stage.removeChild(this.button);
-        __1.app.stage.removeChild(this.text);
-    }
-    ;
-}
-exports.Button = Button;
-;
-
-},{"..":14,"../App":4}],13:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.ResourcesProvider = void 0;
-const tslib_1 = require("tslib");
-class ResourcesProvider {
-    static fetchUnits() {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            const cachedHeroes = localStorage.getItem('heroes');
-            if (cachedHeroes) {
-                return JSON.parse(cachedHeroes);
-            }
-            ;
-            const response = yield fetch('https://pokeapi.co/api/v2/pokemon/');
-            const collection = (yield response.json()).results;
-            const result = [];
-            yield Promise.all(collection.map((item) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-                const itemResult = yield (yield fetch(item.url)).json();
-                result.push(itemResult);
-            })));
-            const sorted = result.sort((a, b) => a.id - b.id);
-            localStorage.setItem('heroes', JSON.stringify(sorted));
-            return sorted;
-        });
-    }
-    ;
-}
-exports.ResourcesProvider = ResourcesProvider;
-;
-
-},{"tslib":3}],14:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.app = void 0;
-const ResourcesProvider_1 = require("./Utils/ResourcesProvider");
-const AssetsHandler_1 = require("./Utils/AssetsHandler");
-exports.app = new PIXI.Application({
-    width: window.innerWidth - 15,
-    height: window.innerHeight - 25,
-    backgroundColor: 0xAAFFFF,
-});
-ResourcesProvider_1.ResourcesProvider.fetchUnits()
-    .then(heroesData => AssetsHandler_1.AssetsHandler.loadAssets(heroesData));
-
-},{"./Utils/AssetsHandler":11,"./Utils/ResourcesProvider":13}]},{},[14]);
+},{}]},{},[11]);
