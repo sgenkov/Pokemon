@@ -4,6 +4,7 @@ import { HeroInfo } from './HeroInfo';
 import { HealthBar } from './HealthBar';
 import { HeroType } from './HeroType';
 import { App } from '../App';
+import { SoundProvider } from '../Utils/SoundProvider';
 export class Hero {
     public static heroes: Hero[] = [];
     private static _appearancePosition: any = { x: 0, y: 60 };
@@ -62,7 +63,7 @@ export class Hero {
         
         (damage > 0) && (victim.currentHitPoints -= damage);
         victim.healthBar.updateHitpoints(victim.currentHitPoints);
-        App.hitSound.play();
+        SoundProvider.hitSound.play();
         return damage;
     };
 

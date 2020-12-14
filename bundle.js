@@ -10,7 +10,7 @@ const Button_1 = require("./Utils/Button");
 const gsap_1 = tslib_1.__importDefault(require("gsap"));
 const AssetsHandler_1 = require("./Utils/AssetsHandler");
 const AnimationsProvider_1 = require("./Utils/AnimationsProvider");
-const howler_1 = require("howler");
+const SoundProvider_1 = require("./Utils/SoundProvider");
 class App {
     constructor() {
         document.body.appendChild(index_1.app.view);
@@ -23,14 +23,6 @@ class App {
         App.text.position.x = index_1.app.view.width / 2;
         App.text.position.y = index_1.app.view.height / 3;
         App.text.anchor.set(0.5);
-        App.battleSound = new howler_1.Howl({
-            src: ['../assets/battle.mp3'],
-            volume: 0.5,
-        });
-        App.hitSound = new howler_1.Howl({
-            src: ['../assets/hit.wav'],
-            volume: 1,
-        });
         this.init();
     }
     ;
@@ -46,14 +38,15 @@ class App {
         Hero_1.Hero.heroes.forEach(hero => {
             hero.showYourself(Math.random() * index_1.app.view.width, Math.random() * index_1.app.view.height);
         });
+        new SoundProvider_1.SoundProvider();
         AnimationsProvider_1.AnimationsProvider.previewHeroes();
         index_1.app.ticker.start();
     }
     ;
     static readyForBattle(hero) {
         App.toggleBattleMode(true);
-        App.battleSound.play();
         AnimationsProvider_1.AnimationsProvider.hideHeroes();
+        SoundProvider_1.SoundProvider.battleSound.play();
         setTimeout(() => tslib_1.__awaiter(this, void 0, void 0, function* () {
             yield Hero_1.Hero.heroes.forEach(hero => index_1.app.stage.removeChild(hero.sprite));
         }), 1001);
@@ -163,7 +156,7 @@ App.text = new PIXI.Text("default", {
 });
 ;
 
-},{"./Hero/Hero":3,"./Hero/HeroType":5,"./Utils/AnimationsProvider":7,"./Utils/AssetsHandler":8,"./Utils/Button":9,"./index":11,"gsap":12,"howler":13,"tslib":14}],2:[function(require,module,exports){
+},{"./Hero/Hero":3,"./Hero/HeroType":5,"./Utils/AnimationsProvider":7,"./Utils/AssetsHandler":8,"./Utils/Button":9,"./Utils/SoundProvider":11,"./index":12,"gsap":13,"tslib":15}],2:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HealthBar = void 0;
@@ -238,7 +231,7 @@ class HealthBar {
 exports.HealthBar = HealthBar;
 ;
 
-},{"../index":11,"./HeroType":5,"tslib":14}],3:[function(require,module,exports){
+},{"../index":12,"./HeroType":5,"tslib":15}],3:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Hero = void 0;
@@ -248,6 +241,7 @@ const HeroInfo_1 = require("./HeroInfo");
 const HealthBar_1 = require("./HealthBar");
 const HeroType_1 = require("./HeroType");
 const App_1 = require("../App");
+const SoundProvider_1 = require("../Utils/SoundProvider");
 class Hero {
     constructor(heroStats) {
         this._battleMode = false;
@@ -277,7 +271,7 @@ class Hero {
         const damage = (this._attack / victim._defense) * Math.round(Math.random() * 30); // 200 is too much, isn't it?
         (damage > 0) && (victim.currentHitPoints -= damage);
         victim.healthBar.updateHitpoints(victim.currentHitPoints);
-        App_1.App.hitSound.play();
+        SoundProvider_1.SoundProvider.hitSound.play();
         return damage;
     }
     ;
@@ -468,7 +462,7 @@ Hero._appearancePosition = { x: 0, y: 60 };
 Hero._moral = 30;
 ;
 
-},{"../App":1,"../SpriteView":6,"../index":11,"./HealthBar":2,"./HeroInfo":4,"./HeroType":5}],4:[function(require,module,exports){
+},{"../App":1,"../SpriteView":6,"../Utils/SoundProvider":11,"../index":12,"./HealthBar":2,"./HeroInfo":4,"./HeroType":5}],4:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HeroInfo = void 0;
@@ -514,7 +508,7 @@ class HeroInfo {
 exports.HeroInfo = HeroInfo;
 ;
 
-},{"../index":11}],5:[function(require,module,exports){
+},{"../index":12}],5:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HeroType = void 0;
@@ -600,7 +594,7 @@ class AnimationsProvider {
 exports.AnimationsProvider = AnimationsProvider;
 ;
 
-},{"../App":1,"../Hero/Hero":3,"../Hero/HeroType":5,"../index":11,"tslib":14}],8:[function(require,module,exports){
+},{"../App":1,"../Hero/Hero":3,"../Hero/HeroType":5,"../index":12,"tslib":15}],8:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AssetsHandler = void 0;
@@ -638,12 +632,13 @@ class AssetsHandler {
 exports.AssetsHandler = AssetsHandler;
 ;
 
-},{"../App":1,"../index":11}],9:[function(require,module,exports){
+},{"../App":1,"../index":12}],9:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Button = void 0;
 const __1 = require("..");
 const App_1 = require("../App");
+const SoundProvider_1 = require("./SoundProvider");
 class Button {
     constructor() {
         this.button = new PIXI.Graphics();
@@ -654,7 +649,7 @@ class Button {
             stroke: "#bbbbbb",
             strokeThickness: 0,
         });
-        App_1.App.battleSound.stop();
+        SoundProvider_1.SoundProvider.battleSound.stop();
         this.button.beginFill(0xff0000);
         this.button.lineStyle(5, 0x00ff00);
         this.button.drawRect(__1.app.view.width / 2 - 90, __1.app.view.height / 2 - 40, 180, 80);
@@ -680,7 +675,7 @@ class Button {
 exports.Button = Button;
 ;
 
-},{"..":11,"../App":1}],10:[function(require,module,exports){
+},{"..":12,"../App":1,"./SoundProvider":11}],10:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ResourcesProvider = void 0;
@@ -710,7 +705,26 @@ class ResourcesProvider {
 exports.ResourcesProvider = ResourcesProvider;
 ;
 
-},{"tslib":14}],11:[function(require,module,exports){
+},{"tslib":15}],11:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SoundProvider = void 0;
+const howler_1 = require("howler");
+class SoundProvider {
+    constructor() {
+        SoundProvider.battleSound = new howler_1.Howl({
+            src: ['../../assets/battle.mp3'],
+            volume: 0.5,
+        });
+        SoundProvider.hitSound = new howler_1.Howl({
+            src: ['../../assets/hit.wav'],
+            volume: 1,
+        });
+    }
+}
+exports.SoundProvider = SoundProvider;
+
+},{"howler":14}],12:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.app = void 0;
@@ -724,7 +738,7 @@ exports.app = new PIXI.Application({
 ResourcesProvider_1.ResourcesProvider.fetchUnits()
     .then(heroesData => AssetsHandler_1.AssetsHandler.loadAssets(heroesData));
 
-},{"./Utils/AssetsHandler":8,"./Utils/ResourcesProvider":10}],12:[function(require,module,exports){
+},{"./Utils/AssetsHandler":8,"./Utils/ResourcesProvider":10}],13:[function(require,module,exports){
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -5553,7 +5567,7 @@ ResourcesProvider_1.ResourcesProvider.fetchUnits()
 
 })));
 
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 (function (global){(function (){
 /*!
  *  howler.js v2.2.1
@@ -8782,7 +8796,7 @@ ResourcesProvider_1.ResourcesProvider.fetchUnits()
 })();
 
 }).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],14:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 (function (global){(function (){
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -9070,4 +9084,4 @@ var __createBinding;
 });
 
 }).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}]},{},[11]);
+},{}]},{},[12]);

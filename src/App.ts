@@ -5,11 +5,9 @@ import { Button } from './Utils/Button';
 import gsap from 'gsap';
 import { AssetsHandler } from './Utils/AssetsHandler';
 import { AnimationsProvider } from './Utils/AnimationsProvider';
-import { Howl } from 'howler';
+import { SoundProvider } from './Utils/SoundProvider';
 export class App {
     public static background1: PIXI.Sprite;
-    public static battleSound: any;
-    public static hitSound: any;
     private static _battleMode: boolean = false;
     public static timeline: any;
     private static playerHero: Hero;
@@ -34,17 +32,6 @@ export class App {
         App.text.position.x = app.view.width / 2;
         App.text.position.y = app.view.height / 3;
         App.text.anchor.set(0.5);
-
-        App.battleSound = new Howl({
-            src: ['../assets/battle.mp3'],
-            volume: 0.5,
-          });
-
-          App.hitSound = new Howl({
-            src: ['../assets/hit.wav'],
-            volume: 1,
-          });
-          
         this.init();
     };
 
@@ -59,14 +46,15 @@ export class App {
         Hero.heroes.forEach(hero => {
             hero.showYourself(Math.random() * app.view.width, Math.random() * app.view.height);
         });
+        new SoundProvider();
         AnimationsProvider.previewHeroes();
         app.ticker.start();
     };
     public static readyForBattle(hero: Hero): void {
         App.toggleBattleMode(true);
-        App.battleSound.play();
-
+        
         AnimationsProvider.hideHeroes();
+        SoundProvider.battleSound.play();
         setTimeout(async () => {
             await Hero.heroes.forEach(hero => app.stage.removeChild(hero.sprite));
         }, 1001);

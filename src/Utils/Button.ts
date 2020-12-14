@@ -1,5 +1,6 @@
 import { app } from '..';
 import { App } from '../App';
+import { SoundProvider } from './SoundProvider';
 export class Button {
     private button: PIXI.Graphics = new PIXI.Graphics();
     private text: PIXI.Text = new PIXI.Text("New Game", {
@@ -10,7 +11,7 @@ export class Button {
         strokeThickness: 0,
     });
     constructor() {
-        App.battleSound.stop();
+        SoundProvider.battleSound.stop();
         this.button.beginFill(0xff0000);
         this.button.lineStyle(5, 0x00ff00);
         this.button.drawRect(app.view.width / 2 - 90, app.view.height / 2 - 40, 180, 80);
